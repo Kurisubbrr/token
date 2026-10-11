@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">token</title>
+  <desc id="desc">A lowercase t inside a rounded dark tile.</desc>
+  <defs>
+    <linearGradient id="token-bg" x1="64" y1="32" x2="448" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#152c43"/>
+      <stop offset="1" stop-color="#07151f"/>
+    </linearGradient>
+    <linearGradient id="token-mark" x1="168" y1="136" x2="336" y2="376" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9bf3cb"/>
+      <stop offset="1" stop-color="#43cbb7"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="120" fill="url(#token-bg)"/>
+  <path d="M232 136v172c0 44 22 68 64 68h32v-52h-23c-13 0-19-7-19-21V136h-54Z" fill="url(#token-mark)"/>
+  <path d="M172 202h166v54H172z" fill="url(#token-mark)"/>
+</svg>

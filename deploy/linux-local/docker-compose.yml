@@ -1,0 +1,105 @@
+# This file is copied into each release package beside the Linux binary.
+services:
+  token:
+    image: token-custom:${IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Keep the locally built image; never replace it with an upstream image.
+    pull_policy: never
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:${SERVER_PORT:-8080}:8080"
+    volumes:
+      - app_data:/app/data
+    environment:
+      AUTO_SETUP: "true"
+      SERVER_HOST: "0.0.0.0"
+      SERVER_PORT: "8080"
+      SERVER_MODE: release
+      RUN_MODE: "${RUN_MODE:-standard}"
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_USER: "${POSTGRES_USER:-token}"
+      DATABASE_PASSWORD: "${POSTGRES_PASSWORD:?请先执行 ./init-env.sh}"
+      DATABASE_DBNAME: "${POSTGRES_DB:-token}"
+      DATABASE_SSLMODE: disable
+      DATABASE_MAX_OPEN_CONNS: "50"
+      DATABASE_MAX_IDLE_CONNS: "10"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?请先执行 ./init-env.sh}"
+      REDIS_DB: "0"
+      ADMIN_EMAIL: "${ADMIN_EMAIL:?请先执行 ./init-env.sh}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?请先执行 ./init-env.sh}"
+      JWT_SECRET: "${JWT_SECRET:?请先执行 ./init-env.sh}"
+      JWT_EXPIRE_HOUR: "24"
+      TOTP_ENCRYPTION_KEY: "${TOTP_ENCRYPTION_KEY:?请先执行 ./init-env.sh}"
+      TZ: "${TZ:-Asia/Shanghai}"
+      SECURITY_URL_ALLOWLIST_ENABLED: "${SECURITY_URL_ALLOWLIST_ENABLED:-false}"
+      SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP: "${SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP:-false}"
+      SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS: "${SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS:-false}"
+      UPDATE_PROXY_URL: "${UPDATE_PROXY_URL:-}"
+      GEMINI_OAUTH_CLIENT_ID: "${GEMINI_OAUTH_CLIENT_ID:-}"
+      GEMINI_OAUTH_CLIENT_SECRET: "${GEMINI_OAUTH_CLIENT_SECRET:-}"
+      GEMINI_CLI_OAUTH_CLIENT_ID: "${GEMINI_CLI_OAUTH_CLIENT_ID:-}"
+      GEMINI_CLI_OAUTH_CLIENT_SECRET: "${GEMINI_CLI_OAUTH_CLIENT_SECRET:-}"
+      ANTIGRAVITY_OAUTH_CLIENT_ID: "${ANTIGRAVITY_OAUTH_CLIENT_ID:-}"
+      ANTIGRAVITY_OAUTH_CLIENT_SECRET: "${ANTIGRAVITY_OAUTH_CLIENT_SECRET:-}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "5", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-token}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?请先执行 ./init-env.sh}"
+      POSTGRES_DB: "${POSTGRES_DB:-token}"
+      # PostgreSQL 18 uses the major-version directory layout.
+      PGDATA: /var/lib/postgresql/18/docker
+      TZ: "${TZ:-Asia/Shanghai}"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--appendfsync", "everysec", "--requirepass", "${REDIS_PASSWORD:?请先执行 ./init-env.sh}"]
+    environment:
+      REDISCLI_AUTH: "${REDIS_PASSWORD:?请先执行 ./init-env.sh}"
+      TZ: "${TZ:-Asia/Shanghai}"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  app_data:
+  postgres_data:
+  redis_data:

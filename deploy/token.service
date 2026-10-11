@@ -1,0 +1,33 @@
+[Unit]
+Description=token - AI API Gateway Platform
+Documentation=https://github.com/bhr2625556394-alt/token
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=token
+Group=token
+WorkingDirectory=/opt/token
+ExecStart=/opt/token/token
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=token
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/token
+
+# Environment - Server configuration
+# Modify these values to change listen address and port
+Environment=GIN_MODE=release
+Environment=SERVER_HOST=0.0.0.0
+Environment=SERVER_PORT=8080
+
+[Install]
+WantedBy=multi-user.target

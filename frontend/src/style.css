@@ -1,0 +1,1405 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ============ 设计变量 ============ */
+  /* 后台与首页共用一套设计语言：近白 / 近黑的底、发丝描边、黑白主按钮、蓝色强调。
+     所有表面（卡片、侧栏、顶栏、按钮、输入框、弹层）都取自这组变量，调整观感只需改这里。
+     变量名沿用早先的 --glass-* 前缀；暗色值在下方 .dark 中覆盖。 */
+  :root {
+    /* 动效曲线：spring 用于位移和缩放（先快后稳、不回弹），out 用于淡入 */
+    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* 页面：底色、顶部两团光、细网格、强调色 */
+    --app-bg: #fbfbfd;
+    --app-glow-a: rgb(99 132 255 / 0.16);
+    --app-glow-b: rgb(45 212 191 / 0.11);
+    --app-grid: rgb(11 12 14 / 0.04);
+    --app-accent: #3b5bfd;
+    /* 吸顶栏、侧栏：页面底色的半透明版本，配合背景模糊 */
+    --app-chrome: rgb(251 251 253 / 0.78);
+    /* 主按钮：浅色主题黑底白字，深色主题白底黑字（与首页一致） */
+    --btn-solid-bg: #0b0c0e;
+    --btn-solid-text: #ffffff;
+
+    --glass-surface: rgb(255 255 255 / 0.82);
+    --glass-surface-strong: rgb(255 255 255 / 0.96);
+    --glass-popover: rgb(255 255 255 / 0.94);
+    --glass-field: rgb(11 12 14 / 0.03);
+    --glass-hover: rgb(11 12 14 / 0.045);
+    --glass-stroke: rgb(11 12 14 / 0.08);
+    --glass-field-border: rgb(11 12 14 / 0.14);
+    --glass-divider: rgb(11 12 14 / 0.07);
+    --glass-rim: inset 0 1px 0 rgb(255 255 255 / 0.7);
+    --glass-depth: 0 0 0 0 transparent;
+    --glass-shadow-sm: 0 1px 2px rgb(11 12 14 / 0.05), 0 6px 14px -8px rgb(11 12 14 / 0.12);
+    --glass-shadow: 0 1px 2px rgb(11 12 14 / 0.04), 0 18px 40px -20px rgb(11 12 14 / 0.16);
+    --glass-shadow-lg: 0 2px 6px rgb(11 12 14 / 0.06), 0 30px 70px -24px rgb(11 12 14 / 0.3);
+    --glass-field-shadow: 0 0 0 0 transparent;
+
+    /* 数据可视化：强调色取品牌蓝，弱化色与轨道色取同一色系；状态色只表示好坏 */
+    --viz-accent: #3b5bfd;
+    --viz-accent-soft: #b6c3ff;
+    --viz-track: rgb(59 91 253 / 0.14);
+    --skeleton-shine: rgb(255 255 255 / 0.8);
+    --viz-good: #0ca30c;
+    --viz-warning: #fab219;
+    --viz-critical: #d03b3b;
+  }
+
+  .dark {
+    --app-bg: #08090a;
+    --app-glow-a: rgb(76 107 255 / 0.2);
+    --app-glow-b: rgb(20 184 166 / 0.12);
+    --app-grid: rgb(255 255 255 / 0.04);
+    --app-accent: #7c93ff;
+    --app-chrome: rgb(8 9 10 / 0.72);
+    --btn-solid-bg: #ffffff;
+    --btn-solid-text: #0b0c0e;
+
+    --glass-surface: rgb(255 255 255 / 0.03);
+    --glass-surface-strong: rgb(255 255 255 / 0.07);
+    --glass-popover: rgb(18 19 21 / 0.94);
+    --glass-field: rgb(255 255 255 / 0.04);
+    --glass-hover: rgb(255 255 255 / 0.06);
+    --glass-stroke: rgb(255 255 255 / 0.08);
+    --glass-field-border: rgb(255 255 255 / 0.14);
+    --glass-divider: rgb(255 255 255 / 0.07);
+    --glass-rim: inset 0 1px 0 rgb(255 255 255 / 0.05);
+    --glass-depth: 0 0 0 0 transparent;
+    --glass-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 14px -8px rgb(0 0 0 / 0.6);
+    --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 24px 60px -24px rgb(0 0 0 / 0.8);
+    --glass-shadow-lg: 0 2px 6px rgb(0 0 0 / 0.5), 0 36px 80px -24px rgb(0 0 0 / 0.9);
+    --glass-field-shadow: 0 0 0 0 transparent;
+
+    --viz-accent: #7c93ff;
+    --viz-accent-soft: #33407f;
+    --viz-track: rgb(124 147 255 / 0.2);
+    --skeleton-shine: rgb(255 255 255 / 0.08);
+  }
+
+  /* 系统开启“降低透明度”时退回不透明的表面 */
+  @media (prefers-reduced-transparency: reduce) {
+    :root {
+      --app-chrome: #fbfbfd;
+      --glass-surface: #ffffff;
+      --glass-surface-strong: #ffffff;
+      --glass-popover: #ffffff;
+    }
+
+    .dark {
+      --app-chrome: #08090a;
+      --glass-surface: #0f1012;
+      --glass-surface-strong: #17181b;
+      --glass-popover: #121315;
+    }
+  }
+
+  /* 卡片上跟随指针的光晕强度：注册成数值类型的自定义属性，才能做淡入淡出。
+     不能叫 --spot：首页的卡片靠继承网格容器上的 --spot 工作，而这里注册的是不继承的属性 */
+  @property --card-spot {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+
+  * {
+    @apply border-gray-200 dark:border-dark-700;
+  }
+
+  html {
+    @apply scroll-smooth antialiased;
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply text-gray-900 dark:text-gray-100;
+    @apply min-h-screen;
+    background-color: var(--app-bg);
+  }
+
+  /* 页面背景：顶部两团缓慢游移的光，与首页首屏同一个做法。
+     比视口略大一圈，移动时不会露出边缘。 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: -14%;
+    z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(38% 32% at 26% 10%, var(--app-glow-a) 0%, transparent 72%),
+      radial-gradient(34% 30% at 78% 8%, var(--app-glow-b) 0%, transparent 72%);
+    animation: app-aurora 26s ease-in-out infinite alternate;
+  }
+
+  @keyframes app-aurora {
+    to {
+      transform: translate3d(3%, 2.5%, 0) scale(1.06);
+    }
+  }
+
+  /* 向下淡出的细网格 */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--app-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--app-grid) 1px, transparent 1px);
+    background-size: 56px 56px;
+    -webkit-mask-image: radial-gradient(ellipse 85% 60% at 50% 0%, #000 12%, transparent 78%);
+    mask-image: radial-gradient(ellipse 85% 60% at 50% 0%, #000 12%, transparent 78%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body::before {
+      animation: none;
+    }
+  }
+
+  /* 自定义滚动条 - 仅针对 Firefox，避免 Chrome 取消 webkit 的全局定制 */
+  @supports (-moz-appearance:none) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+    }
+
+    *:hover,
+    *:focus-within {
+      scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+    }
+
+    .dark *:hover,
+    .dark *:focus-within {
+      scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+    }
+  }
+
+  ::-webkit-scrollbar {
+    @apply h-2 w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-transparent;
+    transition: background-color 0.2s ease;
+  }
+
+  *:hover::-webkit-scrollbar-thumb {
+    @apply bg-gray-300/50 dark:bg-dark-600/50;
+  }
+
+  *:hover::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-dark-500;
+  }
+
+  /* 选中文本样式 */
+  ::selection {
+    @apply bg-primary-500/20 text-primary-900 dark:text-primary-100;
+  }
+
+
+}
+
+@layer components {
+  /* ============ 按钮样式 ============ */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply rounded-full px-4 py-2.5 text-sm font-medium;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2;
+    @apply focus-visible:ring-offset-white dark:focus-visible:ring-offset-dark-950;
+    @apply disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50;
+    @apply active:scale-[0.97];
+    /* 颜色变化要快，缩放用弹性曲线慢一点回位，按下去才有“回弹”的手感 */
+    transition:
+      transform 0.4s var(--ease-spring),
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.25s ease,
+      color 0.2s ease,
+      opacity 0.2s ease;
+  }
+
+  .btn:active {
+    transition-duration: 0.1s;
+  }
+
+  /* 按下时的涟漪：节点由 utils/buttonRipple.ts 临时插入，首页的 .lp-btn 也用这一套 */
+  .btn-ripple {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .btn-ripple > span {
+    position: absolute;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.24;
+    transform: scale(0);
+    animation: btn-ripple 0.7s var(--ease-out) forwards;
+  }
+
+  @keyframes btn-ripple {
+    to {
+      opacity: 0;
+      transform: scale(1);
+    }
+  }
+
+  /* 主按钮与首页的行动按钮一致：浅色主题黑底白字，深色主题白底黑字。
+     高光用 background-position 做扫过效果，不用伪元素，按钮上的角标不会被裁掉。 */
+  .btn-primary {
+    background-color: var(--btn-solid-bg);
+    background-image: linear-gradient(
+      105deg,
+      transparent 38%,
+      color-mix(in srgb, var(--btn-solid-text) 18%, transparent) 50%,
+      transparent 62%
+    );
+    background-repeat: no-repeat;
+    background-position: 160% 0;
+    background-size: 240% 100%;
+    color: var(--btn-solid-text);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 8px 20px -10px rgb(11 12 14 / 0.55);
+    transition:
+      transform 0.4s var(--ease-spring),
+      background-position 0.9s var(--ease-out),
+      box-shadow 0.25s ease,
+      opacity 0.2s ease;
+  }
+
+  .btn-primary:hover:where(:not(:disabled)) {
+    background-position: -60% 0;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 0 0 4px color-mix(in srgb, var(--btn-solid-bg) 12%, transparent),
+      0 12px 26px -10px rgb(11 12 14 / 0.6);
+  }
+
+  /* 按钮里写死成白色的图标、加载圈改为跟随文字色（深色主题下按钮是白底） */
+  .btn-primary .text-white {
+    color: inherit;
+  }
+
+  .btn-secondary {
+    @apply text-gray-700 dark:text-gray-200;
+    @apply border shadow-glass-sm;
+    background-color: var(--glass-surface-strong);
+    border-color: var(--glass-stroke);
+  }
+
+  /* :where() 不增加优先级，模板里叠加的 hover:bg-* 工具类仍可覆盖 */
+  .btn-secondary:hover:where(:not(:disabled)) {
+    background-color: var(--glass-popover);
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-gray-600 dark:text-gray-300;
+  }
+
+  .btn-ghost:hover:where(:not(:disabled)) {
+    background-color: var(--glass-hover);
+  }
+
+  .btn-danger {
+    @apply bg-gradient-to-r from-red-500 to-red-600;
+    @apply text-white shadow-md shadow-red-500/25;
+    @apply hover:from-red-600 hover:to-red-700 hover:shadow-lg hover:shadow-red-500/30;
+  }
+
+  .btn-success {
+    @apply bg-gradient-to-r from-emerald-500 to-emerald-600;
+    @apply text-white shadow-md shadow-emerald-500/25;
+    @apply hover:from-emerald-600 hover:to-emerald-700 hover:shadow-lg hover:shadow-emerald-500/30;
+    @apply dark:shadow-emerald-500/20;
+  }
+
+  .btn-warning {
+    @apply bg-gradient-to-r from-amber-500 to-amber-600;
+    @apply text-white shadow-md shadow-amber-500/25;
+    @apply hover:from-amber-600 hover:to-amber-700 hover:shadow-lg hover:shadow-amber-500/30;
+    @apply dark:shadow-amber-500/20;
+  }
+
+  /* 彩色按钮的顶部高光：叠在 Tailwind 渐变之上，hover 换色时仍然生效 */
+  .btn-danger,
+  .btn-success,
+  .btn-warning {
+    background-image:
+      linear-gradient(to bottom, rgb(255 255 255 / 0.24), rgb(255 255 255 / 0) 60%),
+      linear-gradient(to right, var(--tw-gradient-stops));
+  }
+
+  .btn-stripe {
+    @apply bg-[#635bff] text-white shadow-md shadow-[#635bff]/25;
+    @apply hover:bg-[#5851ea] hover:shadow-lg hover:shadow-[#635bff]/30;
+    @apply dark:bg-[#7a73ff] dark:shadow-[#7a73ff]/20;
+    @apply dark:hover:bg-[#635bff];
+  }
+
+  .btn-airwallex {
+    @apply bg-[#14171A] text-white shadow-md shadow-emerald-500/20;
+    @apply hover:bg-[#20252a] hover:shadow-lg hover:shadow-emerald-500/25;
+    @apply dark:bg-[#7AF0C4] dark:text-gray-950 dark:shadow-emerald-500/20;
+    @apply dark:hover:bg-[#62d9ad];
+  }
+
+  .btn-alipay {
+    @apply bg-[#00AEEF] text-white shadow-md shadow-[#00AEEF]/25;
+    @apply hover:bg-[#009dd6] hover:shadow-lg hover:shadow-[#00AEEF]/30;
+    @apply active:bg-[#008cbe];
+    @apply dark:shadow-[#00AEEF]/20;
+  }
+
+  .btn-wxpay {
+    @apply bg-[#2BB741] text-white shadow-md shadow-[#2BB741]/25;
+    @apply hover:bg-[#24a038] hover:shadow-lg hover:shadow-[#2BB741]/30;
+    @apply active:bg-[#1d8a2f];
+    @apply dark:shadow-[#2BB741]/20;
+  }
+
+  .btn-sm {
+    @apply rounded-full px-3.5 py-1.5 text-xs;
+  }
+
+  .btn-md {
+    @apply rounded-full px-4 py-2 text-sm;
+  }
+
+  .btn-lg {
+    @apply rounded-full px-6 py-3 text-base;
+  }
+
+  .btn-icon {
+    @apply rounded-full p-2.5;
+  }
+
+  /* ============ 输入框样式 ============ */
+  .input {
+    @apply w-full rounded-xl px-4 py-2.5 text-sm;
+    @apply border shadow-glass-field;
+    background-color: var(--glass-field);
+    border-color: var(--glass-field-border);
+    @apply text-gray-900 dark:text-gray-100;
+    @apply placeholder:text-gray-400 dark:placeholder:text-dark-400;
+    @apply focus:outline-none;
+    @apply disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-dark-900;
+    caret-color: var(--app-accent);
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.4s var(--ease-spring);
+  }
+
+  .input:hover:where(:not(:disabled):not(:focus)) {
+    border-color: color-mix(in srgb, currentColor 32%, transparent);
+  }
+
+  /* 聚焦：描边换成强调色，外圈一道柔和的光晕向外“呼”出来（与登录页一致） */
+  .input:focus {
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--app-accent) 18%, transparent);
+  }
+
+  .dark .input[type='date'],
+  .dark .input[type='time'],
+  .dark .input[type='datetime-local'],
+  .dark .input[type='month'],
+  .dark .input[type='week'] {
+    color-scheme: dark;
+  }
+
+  .input-error {
+    @apply border-red-500 focus:border-red-500 focus:ring-red-500/30;
+  }
+
+  .input-label {
+    @apply mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300;
+  }
+
+  .input-hint {
+    @apply mt-1 text-xs text-gray-500 dark:text-dark-400;
+  }
+
+  .input-error-text {
+    @apply mt-1 text-xs text-red-500;
+  }
+
+  /* Hide number input spinner buttons for cleaner UI */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  /* ============ 玻璃效果 ============ */
+  /* 吸顶栏用的磨砂条。模糊层放在 ::before 上而不是元素本身：
+     元素自身带 backdrop-filter 时，其内部弹出的下拉菜单将无法再模糊页面内容。 */
+  .glass {
+    position: relative;
+    isolation: isolate;
+    box-shadow: 0 1px 0 var(--glass-divider);
+  }
+
+  .glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--app-chrome);
+    @apply backdrop-blur-xl backdrop-saturate-150;
+  }
+
+  .glass-card {
+    @apply backdrop-blur-xl backdrop-saturate-150;
+    @apply rounded-2xl border shadow-glass;
+    @apply transition-all duration-300;
+    background-color: var(--glass-surface);
+    border-color: var(--glass-stroke);
+  }
+
+  /* ============ 卡片样式 ============ */
+  /* 卡片不加 backdrop-filter / position：
+     那会让卡片成为层叠上下文或定位容器，卡片内的日期选择等下拉层会被后面的卡片盖住、错位。
+     指针经过时的光晕用背景图画（--mx / --my / --card-spot 由 cardSpotlight.ts 写入），同样不需要伪元素。 */
+  .card {
+    @apply border shadow-glass;
+    border-radius: 1.25rem;
+    background-color: var(--glass-surface);
+    background-image: radial-gradient(
+      520px circle at var(--mx, 50%) var(--my, 0%),
+      color-mix(in srgb, var(--app-accent) calc(var(--card-spot) * 7%), transparent),
+      transparent 62%
+    );
+    border-color: var(--glass-stroke);
+    transition:
+      --card-spot 0.45s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease,
+      background-color 0.3s ease,
+      transform 0.5s var(--ease-spring);
+  }
+
+  .card:hover {
+    border-color: color-mix(in srgb, currentColor 16%, transparent);
+  }
+
+  .card-hover {
+    @apply hover:-translate-y-0.5 hover:shadow-glass-lg;
+  }
+
+  .card-glass {
+    @apply backdrop-blur-xl backdrop-saturate-150;
+    @apply border shadow-glass;
+    background-color: var(--glass-surface);
+    border-color: var(--glass-stroke);
+  }
+
+  .card-header {
+    @apply border-b px-6 py-4;
+    border-color: var(--glass-divider);
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  .card-footer {
+    @apply border-t px-6 py-4;
+    border-color: var(--glass-divider);
+  }
+
+  /* ============ 次级表面 ============ */
+  /* 卡片、弹窗里的内嵌面板和描边小按钮：只管底色与描边，圆角、内边距、阴影仍由模板里的工具类决定。
+     在 components 层，模板里叠加的 border-primary-* / hover:bg-* 等工具类照常覆盖它。
+     同样不加 backdrop-filter（理由见上面的 .card）。 */
+  .glass-panel {
+    background-color: var(--glass-surface-strong);
+    border-color: var(--glass-stroke);
+  }
+
+  /* ============ 统计卡片 ============ */
+  .stat-card {
+    @apply card p-5;
+    @apply flex items-start gap-4;
+  }
+
+  .stat-icon {
+    @apply h-12 w-12 rounded-xl;
+    @apply flex items-center justify-center;
+    @apply text-xl;
+  }
+
+  .stat-icon-primary {
+    @apply bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400;
+  }
+
+  .stat-icon-success {
+    @apply bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400;
+  }
+
+  .stat-icon-warning {
+    @apply bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400;
+  }
+
+  .stat-icon-danger {
+    @apply bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold text-gray-900 dark:text-white truncate;
+  }
+
+  .stat-label {
+    @apply text-sm text-gray-500 dark:text-dark-400;
+  }
+
+  .stat-trend {
+    @apply mt-1 flex items-center gap-1 text-xs font-medium;
+  }
+
+  .stat-trend-up {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+
+  .stat-trend-down {
+    @apply text-red-600 dark:text-red-400;
+  }
+
+  /* ============ 仪表盘小部件 ============ */
+  /* 卡片右上角的深色图标块 */
+  .icon-tile {
+    @apply flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-white;
+    background-image: linear-gradient(160deg, #3b4658 0%, #0f172a 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 6px 14px -6px rgb(15 23 42 / 0.55);
+  }
+
+  .dark .icon-tile {
+    background-image: linear-gradient(160deg, rgb(255 255 255 / 0.2) 0%, rgb(255 255 255 / 0.06) 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 6px 14px -8px rgb(0 0 0 / 0.6);
+  }
+
+  /* 占比条：填充与轨道取同一色系，整条都能读出比例 */
+  .viz-meter {
+    @apply h-2 overflow-hidden rounded-full;
+    background-color: var(--viz-track);
+  }
+
+  .viz-meter-fill {
+    @apply h-full rounded-full transition-all duration-500;
+    background-color: var(--viz-accent);
+    transform-origin: left;
+    animation: meter-grow 0.9s var(--ease-spring) 0.2s backwards;
+  }
+
+  @keyframes meter-grow {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  /* 状态圆点：始终与文字标签成对出现，颜色不单独承载含义 */
+  .viz-dot {
+    @apply inline-block h-2 w-2 flex-shrink-0 rounded-full;
+    background-color: var(--viz-accent);
+  }
+
+  .viz-dot-good {
+    background-color: var(--viz-good);
+  }
+
+  .viz-dot-warning {
+    background-color: var(--viz-warning);
+  }
+
+  .viz-dot-critical {
+    background-color: var(--viz-critical);
+  }
+
+  /* ============ 表格样式 ============ */
+  .table-container {
+    @apply overflow-x-auto rounded-xl border;
+    border-color: var(--glass-divider);
+  }
+
+  .table {
+    @apply w-full text-sm;
+  }
+
+  .table th {
+    @apply px-4 py-3 text-left font-medium;
+    @apply text-gray-600 dark:text-dark-300;
+    @apply border-b;
+    background-color: var(--glass-hover);
+    border-color: var(--glass-divider);
+  }
+
+  .table td {
+    @apply px-4 py-3;
+    @apply text-gray-700 dark:text-gray-300;
+    @apply border-b;
+    border-color: var(--glass-divider);
+  }
+
+  .table tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .table tbody tr {
+    @apply transition-colors duration-150;
+  }
+
+  .table tbody tr:hover {
+    background-color: var(--glass-hover);
+  }
+
+  /* ============ 徽章样式 ============ */
+  .badge {
+    @apply inline-flex items-center gap-1;
+    @apply rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400;
+  }
+
+  .badge-success {
+    @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400;
+  }
+
+  .badge-warning {
+    @apply bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400;
+  }
+
+  .badge-danger {
+    @apply bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400;
+  }
+
+  .badge-gray {
+    @apply bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-300;
+  }
+
+  .badge-purple {
+    @apply bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400;
+  }
+
+  /* ============ 下拉菜单 ============ */
+  .dropdown {
+    @apply absolute z-50;
+    @apply rounded-xl border py-1 shadow-glass-lg;
+    @apply backdrop-blur-2xl backdrop-saturate-150;
+    @apply origin-top-right;
+    animation: popover-in 0.34s var(--ease-spring);
+    background-color: var(--glass-popover);
+    border-color: var(--glass-stroke);
+  }
+
+  @keyframes popover-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.94);
+    }
+  }
+
+  .dropdown-item {
+    @apply px-4 py-2 text-sm;
+    @apply text-gray-700 dark:text-gray-300;
+    @apply cursor-pointer transition-colors;
+    @apply flex items-center gap-2;
+  }
+
+  .dropdown-item:hover {
+    background-color: var(--glass-hover);
+  }
+
+  /* ============ 模态框 ============ */
+  .modal-overlay {
+    @apply fixed inset-0 z-50;
+    @apply bg-black/40 backdrop-blur dark:bg-black/60;
+    @apply flex items-center justify-center p-2 sm:p-4;
+  }
+
+  .modal-content {
+    @apply w-full;
+    @apply max-h-[95vh] sm:max-h-[90vh];
+    @apply border shadow-glass-lg;
+    border-radius: 1.375rem;
+    @apply flex flex-col;
+    background-color: var(--glass-popover);
+    border-color: var(--glass-stroke);
+  }
+
+  .modal-header {
+    @apply border-b px-4 py-3;
+    border-color: var(--glass-divider);
+    @apply sm:px-6 sm:py-4;
+    @apply flex items-center justify-between;
+    @apply flex-shrink-0;
+  }
+
+  .modal-title {
+    @apply text-lg font-semibold text-gray-900 dark:text-white;
+  }
+
+  .modal-body {
+    @apply px-4 py-3;
+    @apply sm:px-6 sm:py-4;
+    @apply flex-1 overflow-y-auto;
+  }
+
+  .modal-footer {
+    @apply border-t px-4 py-3;
+    border-color: var(--glass-divider);
+    @apply sm:px-6 sm:py-4;
+    @apply flex items-center justify-end gap-3;
+    @apply flex-shrink-0;
+  }
+
+  /* 防止body滚动的工具类 */
+  body.modal-open {
+    overflow: hidden;
+  }
+
+  .modal-enter-active {
+    transition: opacity 250ms ease-out;
+  }
+
+  .modal-leave-active {
+    transition: opacity 200ms ease-in;
+  }
+
+  .modal-enter-from,
+  .modal-leave-to {
+    opacity: 0;
+  }
+
+  .modal-enter-active .modal-content {
+    transition: transform 460ms var(--ease-spring), opacity 220ms ease-out;
+  }
+
+  .modal-leave-active .modal-content {
+    transition: transform 200ms ease-in, opacity 200ms ease-in;
+  }
+
+  .modal-enter-from .modal-content {
+    transform: translateY(18px) scale(0.96);
+    opacity: 0;
+  }
+
+  .modal-leave-to .modal-content {
+    transform: scale(0.97);
+    opacity: 0;
+  }
+
+  .modal-enter-to .modal-content,
+  .modal-leave-from .modal-content {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .modal-enter-active,
+    .modal-leave-active,
+    .modal-enter-active .modal-content,
+    .modal-leave-active .modal-content {
+      transition-duration: 1ms;
+      transition-delay: 0ms;
+    }
+
+    .modal-enter-from .modal-content,
+    .modal-leave-to .modal-content {
+      transform: none;
+    }
+  }
+
+  /* 手机上弹窗改成从底部滑出的抽屉：贴底、只留顶部圆角、顶上一条抓手，拇指够得着 */
+  @media (max-width: 639px) {
+    .modal-overlay {
+      align-items: flex-end;
+      padding: 0;
+    }
+
+    .modal-overlay > .modal-content {
+      position: relative;
+      max-width: none;
+      max-height: 92dvh;
+      padding-bottom: env(safe-area-inset-bottom);
+      border-bottom-width: 0;
+      border-radius: 1.5rem 1.5rem 0 0;
+    }
+
+    .modal-overlay > .modal-content::before {
+      position: absolute;
+      top: 7px;
+      left: 50%;
+      width: 36px;
+      height: 4px;
+      margin-left: -18px;
+      border-radius: 9999px;
+      background-color: var(--glass-stroke);
+      content: '';
+    }
+
+    .modal-overlay > .modal-content > .modal-header {
+      padding-top: 1.125rem;
+    }
+
+    .modal-enter-active .modal-content {
+      transition: transform 440ms cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .modal-leave-active .modal-content {
+      transition: transform 240ms ease-in;
+    }
+
+    .modal-enter-from .modal-content,
+    .modal-leave-to .modal-content {
+      opacity: 1;
+      transform: translateY(100%);
+    }
+
+    .modal-enter-to .modal-content,
+    .modal-leave-from .modal-content {
+      transform: none;
+    }
+  }
+
+  /* 表格行悬停时左缘亮起一道强调色（用背景画，不占用单元格的阴影和边框） */
+  .table-body > tr:hover > td:first-child {
+    background-image: linear-gradient(var(--app-accent), var(--app-accent));
+    background-repeat: no-repeat;
+    background-size: 2px 100%;
+  }
+
+  /* ============ Dialog ============ */
+  .dialog-overlay {
+    @apply fixed inset-0 z-50;
+    @apply bg-black/40 backdrop-blur dark:bg-black/60;
+    @apply flex items-center justify-center p-4;
+  }
+
+  .dialog-container {
+    @apply flex w-full flex-col;
+    @apply max-h-[90vh];
+    @apply rounded-2xl border shadow-glass-lg;
+    background-color: var(--glass-popover);
+    border-color: var(--glass-stroke);
+  }
+
+  .dialog-header {
+    @apply border-b px-6 py-4;
+    border-color: var(--glass-divider);
+    @apply flex items-center justify-between;
+  }
+
+  .dialog-body {
+    @apply overflow-y-auto px-6 py-4;
+  }
+
+  .dialog-footer {
+    @apply border-t px-6 py-4;
+    border-color: var(--glass-divider);
+    background-color: var(--glass-hover);
+    @apply flex items-center justify-end gap-3;
+  }
+
+  /* ============ Toast 通知 ============ */
+  .toast {
+    @apply fixed right-4 top-4 z-[100];
+    @apply min-w-[320px] max-w-md;
+    @apply rounded-xl shadow-glass-lg;
+    @apply backdrop-blur-2xl backdrop-saturate-150;
+    background-color: var(--glass-popover);
+    @apply border-l-4;
+    @apply p-4;
+    @apply animate-slide-in-right;
+  }
+
+  .toast-success {
+    @apply border-l-emerald-500;
+  }
+
+  .toast-error {
+    @apply border-l-red-500;
+  }
+
+  .toast-warning {
+    @apply border-l-amber-500;
+  }
+
+  .toast-info {
+    @apply border-l-primary-500;
+  }
+
+  /* ============ 侧边栏 ============ */
+  .sidebar {
+    @apply fixed inset-y-0 left-0 z-40;
+    @apply w-64 border-r;
+    border-color: var(--glass-stroke);
+    @apply flex flex-col;
+    @apply transition-transform duration-300;
+    transition-property: width, transform;
+  }
+
+  /* 与 .glass 相同：模糊层放在 ::before，侧栏内弹出的版本菜单才能继续模糊页面 */
+  .sidebar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--app-chrome);
+    @apply backdrop-blur-xl backdrop-saturate-150;
+  }
+
+  .sidebar-header {
+    @apply h-16 px-6;
+    @apply flex items-center gap-3;
+    @apply border-b;
+    border-color: var(--glass-divider);
+    transition:
+      padding 0.2s ease,
+      gap 0.2s ease;
+  }
+
+  .sidebar-nav {
+    @apply flex-1 overflow-y-auto px-3 py-4;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 rounded-xl py-2.5;
+    @apply overflow-hidden;
+    @apply text-sm font-medium;
+    @apply text-gray-600 dark:text-dark-300;
+    @apply transition-all duration-200;
+    @apply hover:text-gray-900 dark:hover:text-white;
+    padding-left: 1.0625rem;
+    padding-right: 0.875rem;
+  }
+
+  .sidebar-link:hover {
+    background-color: var(--glass-hover);
+  }
+
+  .sidebar-link > svg,
+  .sidebar-link > .sidebar-svg-icon {
+    transition: transform 0.5s var(--ease-spring);
+  }
+
+  .sidebar-link:hover > svg,
+  .sidebar-link:hover > .sidebar-svg-icon {
+    transform: scale(1.1);
+  }
+
+  .sidebar-link:active {
+    transform: scale(0.98);
+  }
+
+  /* 当前项：浮起的玻璃药丸，文字保持中性色，仅图标用主色点亮 */
+  .sidebar-link-active,
+  .sidebar-link-active:hover {
+    @apply text-gray-900 shadow-glass-sm dark:text-white;
+    background-color: var(--glass-surface-strong);
+  }
+
+  /* 当前项的底块由一枚会滑动的指示块承担（见 AppSidebar）：
+     指示块就位后，链接自身不再画底色，换页时才是“滑过去”而不是“闪现” */
+  .sidebar-nav {
+    position: relative;
+  }
+
+  .sidebar-nav.has-indicator .sidebar-link-active,
+  .sidebar-nav.has-indicator .sidebar-link-active:hover {
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .sidebar-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 0.75rem;
+    background-color: var(--glass-surface-strong);
+    box-shadow:
+      inset 0 0 0 1px var(--glass-stroke),
+      var(--glass-shadow-sm);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform 0.5s var(--ease-spring),
+      width 0.5s var(--ease-spring),
+      height 0.5s var(--ease-spring),
+      opacity 0.25s ease;
+  }
+
+  .sidebar-indicator.is-ready {
+    opacity: 1;
+  }
+
+  /* 第一次定位（或从上一页的位置起跳）时不做过渡 */
+  .sidebar-indicator.is-instant {
+    transition: none;
+  }
+
+  /* 链接内容要盖在指示块之上 */
+  .sidebar-link {
+    position: relative;
+  }
+
+  .sidebar-link-active > svg,
+  .sidebar-link-active > .sidebar-svg-icon {
+    @apply text-primary-600 dark:text-primary-400;
+  }
+
+  .sidebar-section {
+    @apply mb-6;
+  }
+
+  .sidebar-section-title {
+    @apply mb-2 px-3;
+    @apply text-xs font-semibold uppercase tracking-wider;
+    @apply text-gray-400 dark:text-dark-500;
+  }
+
+  /* ============ 页面头部 ============ */
+  .page-header {
+    @apply mb-6;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-gray-900 dark:text-white;
+  }
+
+  .page-description {
+    @apply mt-1 text-sm text-gray-500 dark:text-dark-400;
+  }
+
+  /* ============ 空状态 ============ */
+  .empty-state {
+    @apply flex flex-col items-center justify-center px-4 py-12;
+    @apply text-center;
+  }
+
+  /* 空状态出现时整体轻轻浮上来 */
+  .empty-state,
+  .empty-state-enter {
+    animation: empty-state-in 0.6s var(--ease-out) backwards;
+  }
+
+  @keyframes empty-state-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .empty-state,
+    .empty-state-enter {
+      animation: none;
+    }
+  }
+
+  .empty-state-icon {
+    @apply mb-4 h-16 w-16;
+    @apply text-gray-300 dark:text-dark-600;
+  }
+
+  .empty-state-title {
+    @apply mb-1 text-lg font-medium text-gray-900 dark:text-white;
+  }
+
+  .empty-state-description {
+    @apply max-w-sm text-sm text-gray-500 dark:text-dark-400;
+  }
+
+  /* ============ 加载状态 ============ */
+  /* 一段带拖尾的圆弧：圆锥渐变画出由浅到深的弧线，再用遮罩挖成环 */
+  .spinner {
+    @apply h-5 w-5 rounded-full;
+    border-width: 0 !important;
+    background: conic-gradient(from 90deg, transparent 15%, currentColor);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+    animation: spin 0.75s linear infinite;
+  }
+
+  /* 骨架块：灰块上扫过一道高光，比整体“呼吸”更像内容正在到来。
+     模板里现成的写法（animate-pulse + 灰底）也一并换成这个效果 */
+  .skeleton {
+    @apply rounded bg-gray-200 dark:bg-dark-700;
+  }
+
+  .skeleton,
+  .animate-pulse:is(.bg-gray-100, .bg-gray-200, .bg-gray-300),
+  .animate-pulse :is(.bg-gray-200, .bg-gray-300) {
+    background-image: linear-gradient(100deg, transparent 25%, var(--skeleton-shine) 50%, transparent 75%);
+    background-repeat: no-repeat;
+    background-size: 250% 100%;
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
+  }
+
+  /* 外层容器不再跟着整体变淡（不支持 :has 的浏览器忽略这条，退回两种效果叠加） */
+  .animate-pulse:has(:is(.bg-gray-200, .bg-gray-300)) {
+    animation: none;
+  }
+
+  @keyframes skeleton-sweep {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton,
+    .animate-pulse:is(.bg-gray-100, .bg-gray-200, .bg-gray-300),
+    .animate-pulse :is(.bg-gray-200, .bg-gray-300) {
+      animation: none;
+    }
+  }
+
+  /* ============ 分隔线 ============ */
+  .divider {
+    @apply my-4 h-px bg-gray-200 dark:bg-dark-700;
+  }
+
+  /* ============ 标签页 ============ */
+  .tabs {
+    @apply flex gap-1 rounded-xl p-1;
+    background-color: var(--glass-hover);
+    box-shadow: var(--glass-field-shadow);
+  }
+
+  .tab {
+    @apply rounded-lg px-4 py-2 text-sm font-medium;
+    @apply text-gray-600 dark:text-dark-400;
+    @apply transition-all duration-200;
+    @apply hover:text-gray-900 dark:hover:text-white;
+  }
+
+  .tab-active {
+    @apply text-gray-900 shadow-glass-sm dark:text-white;
+    background-color: var(--glass-popover);
+  }
+
+  /* ============ 进度条 ============ */
+  .progress {
+    @apply h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-700;
+  }
+
+  .progress-bar {
+    @apply h-full bg-gradient-to-r from-primary-500 to-primary-400;
+    @apply transition-all duration-300;
+  }
+
+  /* ============ 开关 ============ */
+  .switch {
+    @apply relative h-6 w-11 cursor-pointer rounded-full;
+    @apply bg-gray-300 dark:bg-dark-600;
+    @apply transition-colors duration-200;
+  }
+
+  .switch-active {
+    @apply bg-primary-500;
+  }
+
+  .switch-thumb {
+    @apply absolute left-0.5 top-0.5 h-5 w-5 rounded-full;
+    @apply bg-white shadow-sm;
+    @apply transition-transform duration-200;
+  }
+
+  .switch-active .switch-thumb {
+    @apply translate-x-5;
+  }
+
+  /* ============ 代码块 ============ */
+  .code {
+    @apply font-mono text-sm;
+    @apply bg-gray-100 dark:bg-dark-800;
+    @apply rounded px-1.5 py-0.5;
+    @apply text-primary-600 dark:text-primary-400;
+  }
+
+  .code-block {
+    @apply font-mono text-sm;
+    @apply bg-gray-900 text-gray-100;
+    @apply overflow-x-auto rounded-xl p-4;
+  }
+
+  /* ============ Tour Description ============ */
+  .tour-step-description {
+    @apply space-y-3 text-sm leading-relaxed text-gray-700 dark:text-gray-200;
+  }
+
+  .tour-step-description ul {
+    @apply list-disc pl-5;
+  }
+
+  .tour-step-description ol {
+    @apply list-decimal pl-5;
+  }
+
+  .tour-step-description li + li {
+    @apply mt-1;
+  }
+
+  .tour-info-box {
+    @apply rounded-md border-l-4 border-blue-500 bg-blue-50 px-3 py-2 text-xs text-blue-900;
+    @apply dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-200;
+  }
+
+  .tour-success-box {
+    @apply rounded-md border-l-4 border-emerald-500 bg-emerald-50 px-3 py-2 text-xs text-emerald-900;
+    @apply dark:border-emerald-400 dark:bg-emerald-950/40 dark:text-emerald-200;
+  }
+
+  .tour-warning-box {
+    @apply rounded-md border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-xs text-amber-900;
+    @apply dark:border-amber-400 dark:bg-amber-950/40 dark:text-amber-200;
+  }
+
+  .tour-error-box {
+    @apply rounded-md border-l-4 border-red-500 bg-red-50 px-3 py-2 text-xs text-red-900;
+    @apply dark:border-red-400 dark:bg-red-950/40 dark:text-red-200;
+  }
+
+  /* ============ 表格页面布局优化 ============ */
+  /* 表格容器 - 默认仅支持水平滚动 */
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  /* 表头固定时添加底部阴影，增强视觉层次 */
+  .table-wrapper thead.sticky {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  }
+}
+
+@layer components {
+  /* ============ 页面入场 ============ */
+  /* 只做淡入：transform / filter 会让 main 成为 fixed 元素的定位容器，
+     页面内未 Teleport 的浮层在动画期间会错位 */
+  .app-main {
+    animation: app-main-in 0.45s var(--ease-out) backwards;
+  }
+
+  /* 上浮用 margin 而不是 transform：transform 会让页面里没有 Teleport 的 fixed 浮层在动画期间错位 */
+  @keyframes app-main-in {
+    from {
+      opacity: 0;
+      margin-top: 16px;
+    }
+  }
+
+  /* 页面里的各个区块依次浮现。类名由 AppLayout 在页面挂载时加到当时已有的区块上，
+     之后才出现的节点（例如弹窗）不受影响；同样只动不透明度 */
+  .app-section-enter {
+    animation: app-section-in 0.6s var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+
+  @keyframes app-section-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /* 顶栏标题：换页时自下而上浮现 */
+  .app-title {
+    animation: app-title-in 0.6s var(--ease-out) backwards;
+  }
+
+  @keyframes app-title-in {
+    from {
+      opacity: 0;
+      filter: blur(6px);
+      transform: translateY(6px);
+    }
+  }
+
+  /* 表格数据行：新出现的行依次淡入（只动不透明度，粘性列的定位不受影响） */
+  .data-row-enter {
+    animation: data-row-in 0.45s var(--ease-out) backwards;
+  }
+
+  .data-row-enter:nth-child(2) { animation-delay: 25ms; }
+  .data-row-enter:nth-child(3) { animation-delay: 50ms; }
+  .data-row-enter:nth-child(4) { animation-delay: 75ms; }
+  .data-row-enter:nth-child(5) { animation-delay: 100ms; }
+  .data-row-enter:nth-child(6) { animation-delay: 125ms; }
+  .data-row-enter:nth-child(7) { animation-delay: 150ms; }
+  .data-row-enter:nth-child(8) { animation-delay: 175ms; }
+  .data-row-enter:nth-child(n + 9) { animation-delay: 200ms; }
+
+  @keyframes data-row-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /* 系统开启“减少动态效果”时，入场和循环动画一律瞬间完成 */
+  @media (prefers-reduced-motion: reduce) {
+    .app-main,
+    .app-section-enter,
+    .app-title,
+    .data-row-enter,
+    .dropdown,
+    .viz-meter-fill {
+      animation: none;
+    }
+
+    .sidebar-indicator {
+      transition: none;
+    }
+  }
+}
+
+@layer utilities {
+  /* 文字渐变 */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent;
+  }
+
+  /* 隐藏滚动条 */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 安全区域 */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

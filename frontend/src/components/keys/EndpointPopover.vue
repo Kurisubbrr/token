@@ -1,0 +1,141 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useClipboard } from '@/composables/useClipboard'
+import type { CustomEndpoint } from '@/types'
+
+const props = defineProps<{
+  apiBaseUrl: string
+  customEndpoints: CustomEndpoint[]
+}>()
+
+const { t } = useI18n()
+const { copyToClipboard } = useClipboard()
+const copiedEndpoint = ref<string | null>(null)
+
+let copiedResetTimer: number | undefined
+
+const allEndpoints = computed(() => {
+  const items: Array<{ name: string; endpoint: string; description: string; isDefault: boolean }> = []
+  if (props.apiBaseUrl) {
+    items.push({
+      name: t('keys.endpoints.title'),
+      endpoint: props.apiBaseUrl,
+      description: '',
+      isDefault: true,
+    })
+  }
+  for (const ep of props.customEndpoints) {
+    items.push({ ...ep, isDefault: false })
+  }
+  return items
+})
+
+async function copy(url: string) {
+  const success = await copyToClipboard(url, t('keys.endpoints.copied'))
+  if (!success) return
+
+  copiedEndpoint.value = url
+  if (copiedResetTimer !== undefined) {
+    window.clearTimeout(copiedResetTimer)
+  }
+  copiedResetTimer = window.setTimeout(() => {
+    if (copiedEndpoint.value === url) {
+      copiedEndpoint.value = null
+    }
+  }, 1800)
+}
+
+function tooltipHint(endpoint: string): string {
+  return copiedEndpoint.value === endpoint
+    ? t('keys.endpoints.copiedHint')
+    : t('keys.endpoints.clickToCopy')
+}
+
+function speedTestUrl(endpoint: string): string {
+  return `https://www.tcptest.cn/http/${encodeURIComponent(endpoint)}`
+}
+
+onBeforeUnmount(() => {
+  if (copiedResetTimer !== undefined) {
+    window.clearTimeout(copiedResetTimer)
+  }
+})
+</script>
+
+<template>
+  <div v-if="allEndpoints.length > 0" class="flex flex-wrap gap-2">
+    <div
+      v-for="(item, index) in allEndpoints"
+      :key="index"
+      class="flex items-center gap-1.5 rounded-lg border glass-panel px-2.5 py-1.5 text-xs transition-colors hover:border-primary-200 dark:hover:border-primary-700"
+    >
+      <span class="font-medium text-gray-600 dark:text-gray-300">{{ item.name }}</span>
+      <span
+        v-if="item.isDefault"
+        class="rounded bg-primary-50 px-1 py-px text-[10px] font-medium leading-tight text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
+      >{{ t('keys.endpoints.default') }}</span>
+
+      <span class="text-gray-300 dark:text-dark-500">|</span>
+
+      <div class="group/endpoint relative flex items-center gap-1.5">
+        <div
+          class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-[24rem] -translate-x-1/2 translate-y-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left opacity-0 shadow-[0_14px_36px_-20px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/80 transition-all duration-150 group-hover/endpoint:translate-y-0 group-hover/endpoint:opacity-100 group-focus-within/endpoint:translate-y-0 group-focus-within/endpoint:opacity-100 dark:border-slate-700 dark:bg-slate-900 dark:ring-slate-700/70"
+        >
+          <p
+            v-if="item.description"
+            class="max-w-[24rem] break-words text-xs leading-5 text-slate-600 dark:text-slate-200"
+          >
+            {{ item.description }}
+          </p>
+          <p
+            class="flex items-center gap-1.5 text-[11px] leading-4 text-primary-600 dark:text-primary-300"
+            :class="item.description ? 'mt-1.5' : ''"
+          >
+            <span class="h-1.5 w-1.5 rounded-full bg-primary-500 dark:bg-primary-300"></span>
+            {{ tooltipHint(item.endpoint) }}
+          </p>
+          <div class="absolute left-1/2 top-full h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"></div>
+        </div>
+
+        <code
+          class="cursor-pointer font-mono text-gray-500 decoration-gray-400 decoration-dashed underline-offset-2 hover:text-primary-600 hover:underline focus:text-primary-600 focus:underline focus:outline-none dark:text-gray-400 dark:decoration-gray-500 dark:hover:text-primary-400 dark:focus:text-primary-400"
+          role="button"
+          tabindex="0"
+          @click="copy(item.endpoint)"
+          @keydown.enter.prevent="copy(item.endpoint)"
+          @keydown.space.prevent="copy(item.endpoint)"
+        >{{ item.endpoint }}</code>
+
+        <button
+          type="button"
+          class="rounded p-0.5 transition-colors"
+          :class="copiedEndpoint === item.endpoint
+            ? 'text-emerald-500 dark:text-emerald-400'
+            : 'text-gray-400 hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400'"
+          :aria-label="tooltipHint(item.endpoint)"
+          @click="copy(item.endpoint)"
+        >
+          <svg v-if="copiedEndpoint === item.endpoint" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+          <svg v-else class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 8.5h6.5a2.5 2.5 0 0 1 2.5 2.5v6.5a2.5 2.5 0 0 1 -2.5 2.5h-6.5a2.5 2.5 0 0 1 -2.5 -2.5v-6.5a2.5 2.5 0 0 1 2.5 -2.5zM15.5 8.5v-2A2.5 2.5 0 0 0 13 4H6.5A2.5 2.5 0 0 0 4 6.5V13a2.5 2.5 0 0 0 2.5 2.5h2" />
+          </svg>
+        </button>
+
+        <a
+          :href="speedTestUrl(item.endpoint)"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="rounded p-0.5 text-gray-400 transition-colors hover:text-amber-500 dark:text-gray-500 dark:hover:text-amber-400"
+          :title="t('keys.endpoints.speedTest')"
+        >
+          <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 3L5 13.5h6L10 21l8.5-10.5h-6z" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</template>
