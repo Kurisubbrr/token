@@ -1,0 +1,29 @@
+# 网站更新与回退速查
+
+无需在 Mac 下载源码。日常操作在 GitHub 网页和服务器完成，本次部署、校验及备份也均在服务器完成。
+
+## 修改并发布
+
+可直接在 GitHub 编辑源码并提交到 main，也可在服务器 /opt/token-source-work 修改后提交、推送。服务器上的未提交修改不会自动进入 GitHub 构建。
+
+进入 GitHub 仓库，打开 Actions → Custom release → Run workflow，选择 main，填写一个未使用的 custom-v 版本号，例如 custom-v0.2.15-20261020.2，再点 Run workflow。版本号不含空格或加号，无需提前创建标签。
+
+等运行变为绿色，并确认同名 Release 中已有 .tar.gz 和 .sha256 文件，再到服务器执行：
+
+    tokenctl update custom-v0.2.15-20261020.2
+
+将示例版本替换为刚刚发布的版本。更新会先校验和备份，再检查新程序是否正常；迁移或启动数据处理发生变化时会拦截，需单独安排数据库升级。
+
+## 常用操作
+
+    tokenctl status
+    tokenctl list
+    tokenctl backup
+    tokenctl rollback
+    tokenctl rollback baseline-20261020T132212Z
+
+status 查看当前版本与运行状态；list 查看本机保存的版本；backup 备份当前数据和配置；rollback 回退上一个程序，后加版本 ID 可指定目标。
+
+当前原始基线为 baseline-20261020T132212Z。更新与回退保留共享 .env 和数据卷；私有备份、共享配置的具体位置仅在服务器内部说明，不公开。程序回退不会恢复旧数据库，也不会撤销用户新增记录。不要删除数据卷或重新生成生产密钥。
+
+原程序构建时包含未提交源码，无法仅凭 Git 提交精确重建；原始二进制和镜像已经保存，可用于恢复该基线。
