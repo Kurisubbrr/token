@@ -2,23 +2,25 @@
 
 本流程从自己的 GitHub 仓库构建自定义程序。前端与后端一起打包，构建类型始终为 source，不调用上游 GoReleaser，也不使用官方程序覆盖定制。
 
+本次建立版本管理后，线上仍运行原来的定制程序，尚未启用新源码构建的程序。发布与切换是两个步骤，只有执行 tokenctl update 才会切换线上程序。
+
+新源码构建已验证能打包，但尚未验证与原线上全部定制功能逐项一致；首次业务升级前应核对定制功能，构建成功不代表源码完全还原。
+
 ## 当前线上基线
 
 首次建立版本管理时，保存线上完整二进制、运行资源、部署文件、镜像标识和校验值，并另行保存数据库与应用数据备份。基线用于恢复当前线上程序。
 
-如果原 BUILD-INFO.txt 记录 source_modified=true，表示构建时有未提交修改。已有 Git 提交无法精确重建该程序；完整保留线上二进制可以回退，但不能声称已经找回那些未提交源码。今后发布只接受干净、已提交的源码，记录完整提交号。
+原程序构建时存在未提交改动，目前无法完整还原当时的源码，也无法仅凭已有 Git 提交精确重建。原程序二进制和镜像已原样保存，可用于恢复原定制版本；这不代表未提交源码已经找回。今后发布只接受干净、已提交的源码，记录完整提交号。
 
 GitHub 保存源码和不含凭据的部署材料。公开仓库不保存 .env、数据库、Redis、应用卷、用户文件或密钥。这些内容保存在服务器受限备份目录。
 
 ## 发布新版本
 
-修改源码、完成检查并提交后，创建未使用的 custom-v* 标签，例如：
+修改源码、完成检查并提交到 main 后，进入 GitHub 仓库的 Actions → Custom release → Run workflow，选择 main，填写一个未使用的新 custom-v* 版本号，例如 custom-v0.2.15-20261020.2，再点 Run workflow。
 
-    git tag custom-v0.2.15-20261020.1
-    git push origin main
-    git push origin custom-v0.2.15-20261020.1
+工作流以本次选择的 main 提交构建，发布时自动创建对应标签，无需提前创建或推送标签。不要填写已有发布或已使用的版本号，修正后使用新版本号。
 
-Custom release 工作流安装 pnpm 9、Node 20 和 backend/go.mod 要求的 Go，重新构建前端并嵌入 Linux amd64 程序，生成部署包、SHA256 和 RELEASE-MANIFEST.json，再发布同名 GitHub Release。发布不覆盖，修正后使用新标签。也可手动运行工作流并指定已有 custom-v* 标签。
+Custom release 工作流安装 pnpm 9、Node 20 和 backend/go.mod 要求的 Go，重新构建前端并嵌入 Linux amd64 程序，生成部署包、SHA256 和 RELEASE-MANIFEST.json，再发布同名 GitHub Release。等运行变为绿色，并确认同名 Release 中已有 .tar.gz 和 .sha256 文件后，再执行服务器更新命令。完成 GitHub 发布本身不会切换线上程序。
 
 自定义版本只允许字母、数字、点、下划线和短横线，不允许加号。不要手动对自定义版本运行旧 Release 工作流，它使用 BuildType=release 的上游发布流程。
 
@@ -27,7 +29,7 @@ Custom release 工作流安装 pnpm 9、Node 20 和 backend/go.mod 要求的 Go�
     cd frontend
     pnpm install --frozen-lockfile
     cd ..
-    VERSION=custom-v0.2.15-20261020.1 ./local-tools/package-linux.sh --arch amd64
+    VERSION=custom-v0.2.15-20261020.2 ./local-tools/package-linux.sh --arch amd64
 
 默认输出到源码目录旁的 release-artifacts/。可用 --output 指定仓库外的输出目录。脚本拒绝未提交修改、未跟踪文件及跳过前端重建。
 
@@ -36,7 +38,7 @@ Custom release 工作流安装 pnpm 9、Node 20 和 backend/go.mod 要求的 Go�
     tokenctl status
     tokenctl list
     tokenctl backup
-    tokenctl update custom-v0.2.15-20261020.1
+    tokenctl update custom-v0.2.15-20261020.2
     tokenctl rollback
 
 status 查看当前版本与运行状态；list 查看本机保存的版本；backup 创建数据与配置备份；update <tag> 获取校验后的自定义版本；rollback 回到上一个版本。指定已保存版本使用 tokenctl rollback <release-id>，离线包使用 tokenctl update /绝对路径/部署包.tar.gz。

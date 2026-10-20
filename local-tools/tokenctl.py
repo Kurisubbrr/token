@@ -271,15 +271,38 @@ def checked_url(url):
     return url
 
 
+def checked_proxy(proxy):
+    if proxy is None:
+        return None
+    if not isinstance(proxy, str) or any(character.isspace() for character in proxy):
+        raise OpsError('Download proxy must be an approved local HTTP endpoint.')
+    try:
+        parsed = urllib.parse.urlsplit(proxy)
+        allowed = (parsed.scheme == 'http'
+                   and parsed.hostname in ('127.0.0.1', 'localhost', '172.17.0.1')
+                   and parsed.port == 7890
+                   and parsed.username is None and parsed.password is None
+                   and parsed.path in ('', '/') and not parsed.query and not parsed.fragment)
+    except ValueError:
+        allowed = False
+    if not allowed:
+        raise OpsError('Download proxy must be an approved local HTTP endpoint.')
+    return proxy
+
+
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, request, fp, code, msg, headers, newurl):
         checked_url(newurl)
         return super(SafeRedirect, self).redirect_request(request, fp, code, msg, headers, newurl)
 
 
-def download(url, destination, limit):
+def download(url, destination, limit, proxy=None):
     checked_url(url)
-    opener = urllib.request.build_opener(SafeRedirect())
+    checked_proxy(proxy)
+    handlers = [SafeRedirect()]
+    if proxy is not None:
+        handlers.insert(0, urllib.request.ProxyHandler({'http': proxy, 'https': proxy}))
+    opener = urllib.request.build_opener(*handlers)
     request = urllib.request.Request(url, headers={'User-Agent': 'tokenctl/1', 'Accept': 'application/vnd.github+json'})
     try:
         with opener.open(request, timeout=60) as response, open(destination, 'xb') as output:
@@ -317,6 +340,7 @@ class TokenOps(object):
             raise OpsError('Operational configuration does not match the fixed production identity.')
         if self.config.get('health_url') not in ('http://127.0.0.1:8080/health', 'http://localhost:8080/health'):
             raise OpsError('Health URL must be the fixed local application endpoint.')
+        checked_proxy(self.config.get('download_proxy'))
 
     @contextlib.contextmanager
     def lock(self):
@@ -505,7 +529,7 @@ class TokenOps(object):
         private_dir(destination)
         metadata_path = os.path.join(destination, 'release.json')
         api = 'https://api.github.com/repos/' + REPOSITORY + '/releases/tags/' + urllib.parse.quote(tag, safe='')
-        download(api, metadata_path, 4 * 1024 * 1024)
+        download(api, metadata_path, 4 * 1024 * 1024, proxy=self.config.get('download_proxy'))
         metadata = load_json(metadata_path)
         if metadata.get('tag_name') != tag or metadata.get('draft'):
             raise OpsError('GitHub release identity is invalid.')
@@ -523,7 +547,7 @@ class TokenOps(object):
             expected_prefix = '/' + REPOSITORY + '/releases/download/'
             if parsed.hostname != 'github.com' or not parsed.path.startswith(expected_prefix):
                 raise OpsError('Release asset belongs to an unexpected repository.')
-            download(url, os.path.join(destination, asset['name']), limit)
+            download(url, os.path.join(destination, asset['name']), limit, proxy=self.config.get('download_proxy'))
         return os.path.join(destination, archive_asset['name'])
 
     def prepare(self, source, current):

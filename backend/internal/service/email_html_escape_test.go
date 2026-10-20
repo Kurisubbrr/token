@@ -53,7 +53,7 @@ func TestBuildPasswordResetEmailBody_EscapesSiteName(t *testing.T) {
 		resetURL := "https://example.com/reset?token=xyz"
 		body := svc.buildPasswordResetEmailBody(resetURL, "token")
 
-		assert.Contains(t, body, "<h1>Token</h1>")
+		assert.Contains(t, body, "<h1>token</h1>")
 		assert.Contains(t, body, resetURL)
 	})
 

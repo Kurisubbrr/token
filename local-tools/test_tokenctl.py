@@ -409,5 +409,74 @@ class URLTest(unittest.TestCase):
         self.assertEqual(environment['DOCKER_HOST'], 'unix:///var/run/docker.sock')
 
 
+    def test_explicit_download_proxy_overrides_environment_and_propagates_to_release_assets(self):
+        proxy = 'http://172.17.0.1:7890'
+        url = 'https://api.github.com/repos/Kurisubbrr/token/releases/tags/v1'
+        with tempfile.TemporaryDirectory() as temporary:
+            response = mock.MagicMock()
+            response.__enter__.return_value = response
+            response.geturl.return_value = url
+            response.read.side_effect = [b'payload', b'']
+            opener = mock.Mock()
+            opener.open.return_value = response
+            with mock.patch.dict(os.environ, {'HTTPS_PROXY': 'http://untrusted.example:9999',
+                                              'HTTP_PROXY': 'http://untrusted.example:9999'}):
+                with mock.patch('tokenctl.urllib.request.build_opener', return_value=opener) as build:
+                    output = os.path.join(temporary, 'explicit.bin')
+                    tokenctl.download(url, output, 1024, proxy=proxy)
+            handlers = build.call_args[0]
+            proxy_handlers = [handler for handler in handlers
+                              if isinstance(handler, tokenctl.urllib.request.ProxyHandler)]
+            self.assertEqual(len(proxy_handlers), 1)
+            self.assertEqual(proxy_handlers[0].proxies, {'http': proxy, 'https': proxy})
+            self.assertTrue(any(isinstance(handler, tokenctl.SafeRedirect) for handler in handlers))
+            with open(output, 'rb') as stream:
+                self.assertEqual(stream.read(), b'payload')
+
+            # Omission preserves the previous default opener behavior.
+            response.read.side_effect = [b'default', b'']
+            with mock.patch('tokenctl.urllib.request.build_opener', return_value=opener) as build:
+                tokenctl.download(url, os.path.join(temporary, 'default.bin'), 1024)
+            self.assertEqual(len(build.call_args[0]), 1)
+            self.assertIsInstance(build.call_args[0][0], tokenctl.SafeRedirect)
+
+            archive_name = 'token-custom-1-linux-amd64-20261020.tar.gz'
+            metadata = {'tag_name': 'v1', 'draft': False, 'assets': [
+                {'name': name, 'browser_download_url':
+                 'https://github.com/Kurisubbrr/token/releases/download/v1/' + name}
+                for name in (archive_name, archive_name + '.sha256')]}
+            ops = tokenctl.TokenOps.__new__(tokenctl.TokenOps)
+            ops.root = os.path.join(temporary, 'ops')
+            ops.config = {'download_proxy': proxy}
+            def fake_download(download_url, destination, limit, proxy=None):
+                with open(destination, 'w', encoding='utf-8') as stream:
+                    stream.write(json.dumps(metadata) if destination.endswith('release.json') else 'asset')
+            with mock.patch('tokenctl.download', side_effect=fake_download) as fetch:
+                fetched = ops.fetch_release('v1')
+            self.assertEqual(os.path.basename(fetched), archive_name)
+            self.assertEqual(fetch.call_count, 3)
+            for call in fetch.call_args_list:
+                self.assertEqual(call[1]['proxy'], proxy)
+
+    def test_invalid_download_proxies_are_rejected_before_network_or_file_access(self):
+        for proxy in ('https://172.17.0.1:7890', 'http://172.17.0.1:8080',
+                      'http://other.example:7890', 'http://user:secret@localhost:7890',
+                      'http://@localhost:7890', 'http://localhost:7890/private',
+                      'http://localhost:7890?secret=hidden', 'http://localhost:bad',
+                      'http://localhost:7890#fragment', 'http://localhost:7890\n', ''):
+            with self.subTest(proxy=proxy):
+                with mock.patch('tokenctl.urllib.request.build_opener') as build:
+                    with mock.patch('tokenctl.open', create=True) as output:
+                        with self.assertRaises(tokenctl.OpsError) as caught:
+                            tokenctl.download('https://github.com/Kurisubbrr/token/releases',
+                                              '/unused-test-destination', 1024, proxy=proxy)
+                    output.assert_not_called()
+                build.assert_not_called()
+                self.assertNotIn('secret', str(caught.exception))
+        for proxy in ('http://127.0.0.1:7890', 'http://localhost:7890',
+                      'http://172.17.0.1:7890'):
+            self.assertEqual(tokenctl.checked_proxy(proxy), proxy)
+
+
 if __name__ == '__main__':
     unittest.main()
