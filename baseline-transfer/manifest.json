@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "tag": "baseline-20261020T132212Z",
+  "base_url": "http://101.37.30.124/a5188357576acf0fce0d8b7d6eae1ec6831df85d81a8efd8/",
+  "assets": [
+    {
+      "name": "token-custom-0.2.15-linux-amd64-20261020T132212Z.tar.gz",
+      "size": 38048547,
+      "sha256": "0fa21fcf3f74ac688608b9f990092e4ba6e16a8cedb26fa06fa0301cd1ed6736"
+    },
+    {
+      "name": "token-custom-0.2.15-linux-amd64-20261020T132212Z.tar.gz.sha256",
+      "size": 122,
+      "sha256": "d44382a4e74e8120e5597a19bcbc951f085887bf74a93e05309d010ce3c2625d"
+    },
+    {
+      "name": "token-baseline-20261020T132212Z-image.tar.gz",
+      "size": 89023705,
+      "sha256": "a04f24f2b2856968bfe43cab7b4ab7d881a551c6163a6baf7064e805c65188f1"
+    },
+    {
+      "name": "token-baseline-20261020T132212Z-image.tar.gz.sha256",
+      "size": 111,
+      "sha256": "1d91fa12bb20681f56960d8a77f0da0aa317959ca7af14188e76989a4c608e04"
+    },
+    {
+      "name": "baseline-publication.json",
+      "size": 726,
+      "sha256": "51e2fc8e2b0cb49e5b60dee3bd29a21cf7f86d49c6cc23ad89594ece4e8250ba"
+    }
+  ]
+}

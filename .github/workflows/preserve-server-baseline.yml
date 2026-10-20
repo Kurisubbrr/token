@@ -1,0 +1,74 @@
+name: Preserve server baseline
+on:
+  push:
+    branches: ['production-baseline-*']
+    paths: ['baseline-transfer/**', '.github/workflows/preserve-server-baseline.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: preserve-server-baseline
+  cancel-in-progress: false
+jobs:
+  preserve:
+    if: github.repository == 'Kurisubbrr/token'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Download only the audited public program assets and verify exact hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,re,time,urllib.request,urllib.error
+          from pathlib import Path
+          manifest=json.loads(Path('baseline-transfer/manifest.json').read_text())
+          assert manifest['tag']=='baseline-20261020T132212Z'
+          assert manifest['base_url'].startswith('http://101.37.30.124/')
+          root=Path(os.environ['RUNNER_TEMP'])/'preserved-baseline'
+          root.mkdir()
+          for asset in manifest['assets']:
+              name=asset['name']
+              assert re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,180}',name)
+              assert 0 < asset['size'] < 1024*1024*1024
+              path=root/name
+              for attempt in range(3):
+                  try:
+                      digest=hashlib.sha256()
+                      total=0
+                      with urllib.request.urlopen(manifest['base_url']+name,timeout=120) as response, path.open('wb') as output:
+                          assert response.status==200
+                          while True:
+                              chunk=response.read(1024*1024)
+                              if not chunk:break
+                              total+=len(chunk)
+                              assert total <= asset['size']
+                              digest.update(chunk)
+                              output.write(chunk)
+                      assert total==asset['size'] and digest.hexdigest()==asset['sha256'], 'Asset checksum mismatch'
+                      print('Verified '+name,flush=True)
+                      break
+                  except (OSError,urllib.error.URLError):
+                      if attempt==2:raise
+                      time.sleep(3)
+          PY
+      - name: Publish exact original programs as an immutable baseline
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BASELINE_TAG: baseline-20261020T132212Z
+        run: |
+          set -euo pipefail
+          if gh release view "$BASELINE_TAG" >/dev/null 2>&1; then
+            echo 'Baseline release already exists; refusing to overwrite it.' >&2
+            exit 1
+          fi
+          gh release create "$BASELINE_TAG" --draft --target "$GITHUB_SHA" \
+            --title 'Original production baseline 2026-10-20' \
+            --notes-file baseline-transfer/NOTES.md
+          gh release upload "$BASELINE_TAG" "$RUNNER_TEMP/preserved-baseline/"*
+          gh release edit "$BASELINE_TAG" --draft=false --latest=false
