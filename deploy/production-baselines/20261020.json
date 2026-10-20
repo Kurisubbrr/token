@@ -1,0 +1,17 @@
+{
+  "baseline_id": "baseline-20261020T132212Z",
+  "binary_sha256": "f9aa64f2608dcb5056ed728f5a3cf975a9edaaa93797c127758138d486e3301a",
+  "excluded": [
+    "production .env",
+    "database",
+    "user data volumes",
+    "credentials"
+  ],
+  "image_id": "sha256:ce5e0bff4e8fdeecab15a5c167b32a5b33fd39afe8e26c4475bacd85b01c1ffb",
+  "publication_audit": {
+    "known_live_credentials_absent_from_program_and_image": true,
+    "program_allowlist_verified": true,
+    "program_archive_sha256": "0fa21fcf3f74ac688608b9f990092e4ba6e16a8cedb26fa06fa0301cd1ed6736"
+  },
+  "source_provenance": "Exact online binary preserved; original dirty source snapshot unavailable. All 295 SQL migration checksums match repository import 3761741."
+}

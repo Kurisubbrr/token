@@ -1,0 +1,109 @@
+name: Custom release
+
+on:
+  push:
+    tags:
+      - 'custom-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '自定义版本号（首次发布可自动创建标签），例如 custom-v0.2.15-20261020.1'
+        required: true
+        type: string
+
+concurrency:
+  group: custom-release-${{ github.repository }}-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate custom tag and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^custom-v[0-9][a-zA-Z0-9._-]{0,142}$ ]] || exit 1
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            tag_commit="$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")"
+            [[ "$tag_commit" == "$(git rev-parse HEAD)" ]] || exit 1
+          fi
+          [[ -z "$(git status --porcelain --untracked-files=all)" ]] || exit 1
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Build customized amd64 package
+        shell: bash
+        env:
+          VERSION: ${{ env.RELEASE_TAG }}
+        run: ./local-tools/package-linux.sh --arch amd64 --output "$RUNNER_TEMP/custom-release"
+      - name: Verify archive and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/custom-release"
+          sha256sum -c ./*.sha256
+          mkdir "$RUNNER_TEMP/custom-release-check"
+          tar -xzf ./*.tar.gz -C "$RUNNER_TEMP/custom-release-check"
+          python3 - "$RUNNER_TEMP/custom-release-check" "$RELEASE_TAG" <<'PYVERIFY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import sys
+          roots = list(Path(sys.argv[1]).iterdir())
+          assert len(roots) == 1 and roots[0].is_dir()
+          root = roots[0]
+          manifest = json.loads((root / 'RELEASE-MANIFEST.json').read_text())
+          assert manifest['schema_version'] == 1
+          assert manifest['version'] == sys.argv[2]
+          assert manifest['source_modified'] is False
+          assert manifest['frontend'] == 'embedded'
+          assert manifest['build_type'] == 'source'
+          assert manifest['arch'] == 'amd64'
+          actual = {
+              path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+              for path in root.rglob('*')
+              if path.is_file() and path.relative_to(root).as_posix() != 'RELEASE-MANIFEST.json'
+          }
+          assert actual == manifest['files']
+          canonical = json.dumps(manifest['migration_files'], sort_keys=True,
+                                 separators=(',', ':'), ensure_ascii=True).encode('utf-8')
+          assert hashlib.sha256(canonical).hexdigest() == manifest['migration_fingerprint']
+          PYVERIFY
+      - name: Publish custom release without replacing existing assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" --target "$(git rev-parse HEAD)" --latest=false --title "$RELEASE_TAG" \
+            --notes '自定义源码构建，前端已嵌入，BuildType=source。使用 tokenctl update 安装；迁移指纹变化阻止自动更新。' \
+            "$RUNNER_TEMP/custom-release/"*.tar.gz "$RUNNER_TEMP/custom-release/"*.sha256
