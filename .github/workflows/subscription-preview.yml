@@ -1,0 +1,78 @@
+name: Subscription design preview
+
+on:
+  push:
+    branches: ['codex/subscription-plus-pro-max']
+  workflow_dispatch:
+
+concurrency:
+  group: subscription-preview-plus-pro-max-20261022
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      PREVIEW_PREFIX: preview-subscription-plus-pro-max-20261022
+      PREVIEW_NAME: subscription-preview-plus-pro-max-20261022
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install locked dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Test subscription browsing and payment gate
+        working-directory: frontend
+        run: pnpm exec vitest run src/components/payment/__tests__/SubscriptionCatalog.spec.ts src/views/user/__tests__/UserServiceView.spec.ts
+      - name: Check frontend types
+        working-directory: frontend
+        run: pnpm run typecheck
+      - name: Build standalone preview
+        working-directory: frontend
+        run: pnpm exec vite build --config vite.subscription-preview.config.ts
+      - name: Verify and package preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s frontend/subscription-preview-dist/index.html
+          test -d frontend/subscription-preview-dist/assets
+          test ! -e frontend/subscription-preview-dist/subscription-preview.html
+          mkdir -p "$RUNNER_TEMP/subscription-preview"
+          tar -czf "$RUNNER_TEMP/subscription-preview/$PREVIEW_NAME.tar.gz" -C frontend/subscription-preview-dist index.html assets
+          cd "$RUNNER_TEMP/subscription-preview"
+          sha256sum "$PREVIEW_NAME.tar.gz" > "$PREVIEW_NAME.tar.gz.sha256"
+          sha256sum -c "$PREVIEW_NAME.tar.gz.sha256"
+      - name: Publish preview prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          PREVIEW_TAG="${PREVIEW_PREFIX}-${GITHUB_SHA:0:12}"
+          if gh release view "$PREVIEW_TAG" >/dev/null 2>&1; then
+            printf 'This commit preview already exists; refusing to overwrite it.\n' >&2
+            exit 1
+          fi
+          gh release create "$PREVIEW_TAG" --draft --prerelease --target "$GITHUB_SHA" \
+            --title 'Plus / Pro / Max · Subscription design preview' \
+            --notes 'Independent interface preview built from this commit. Includes Chinese/English, light/dark mode and responsive plans. No account access, API calls, orders or payments.'
+          gh release upload "$PREVIEW_TAG" \
+            "$RUNNER_TEMP/subscription-preview/$PREVIEW_NAME.tar.gz" \
+            "$RUNNER_TEMP/subscription-preview/$PREVIEW_NAME.tar.gz.sha256"
+          gh release edit "$PREVIEW_TAG" --draft=false --prerelease --latest=false

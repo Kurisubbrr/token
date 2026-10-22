@@ -1,0 +1,42 @@
+.subscription-preview { min-height: 100vh; }
+.preview-header {
+  border-bottom: 1px solid var(--glass-divider);
+  background: var(--app-chrome);
+  backdrop-filter: blur(18px);
+}
+.preview-header-inner {
+  max-width: 1320px; margin: 0 auto; padding: 18px 32px;
+  display: flex; align-items: center; gap: 22px;
+}
+.preview-brand { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; letter-spacing: -.7px; }
+.preview-brand-mark {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px;
+  background: var(--btn-solid-bg); color: var(--btn-solid-text); font-size: 16px; letter-spacing: 0;
+}
+.preview-navigation { display: flex; align-items: center; gap: 20px; font-size: 13px; color: #6e737c; }
+.preview-nav-divider { color: #d2d4da; }
+.preview-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.preview-badge { margin-right: 10px; font-size: 11px; color: #6e737c; }
+.preview-control {
+  min-width: 36px; height: 34px; padding: 0 9px; border: 1px solid var(--glass-stroke);
+  border-radius: 10px; background: var(--glass-surface); font-size: 12px;
+  transition: background .18s ease;
+}
+.preview-control:hover { background: var(--glass-hover); }
+.preview-control:focus-visible, .preview-brand:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 3px; }
+.preview-theme { font-size: 19px; line-height: 1; }
+.preview-main { max-width: 1320px; margin: 0 auto; padding: 26px 32px 56px; }
+.preview-notice { display: flex; align-items: center; gap: 8px; margin-bottom: 28px; font-size: 12px; color: #6e737c; }
+.preview-notice-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--app-accent); flex-shrink: 0; }
+.preview-footer { padding: 0 24px 28px; text-align: center; font-size: 11px; letter-spacing: .2px; color: #9a9ea7; }
+.dark .preview-navigation, .dark .preview-notice, .dark .preview-badge { color: #9a9ea7; }
+.dark .preview-nav-divider { color: #34373d; }
+@media (max-width: 640px) {
+  .preview-header-inner { padding: 16px 18px; gap: 14px; }
+  .preview-main { padding: 22px 18px 38px; }
+  .preview-navigation { font-size: 12px; gap: 12px; }
+  .preview-badge { display: none; }
+  .preview-notice { margin-bottom: 24px; align-items: flex-start; line-height: 1.7; }
+  .preview-notice-dot { margin-top: 7px; }
+}
+@media (prefers-reduced-motion: reduce) { .preview-control { transition: none; } }

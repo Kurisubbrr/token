@@ -1,7 +1,12 @@
 <template>
   <component v-if="ready && enabled" :is="serviceView" />
   <AppLayout v-else>
-    <div v-if="!ready && !loadFailed" class="flex justify-center py-12" role="status">
+    <SubscriptionCatalog v-if="showSubscriptionCatalog">
+      <template #actions>
+        <RouterLink to="/orders" class="btn btn-secondary">{{ t('userService.orderQuery') }}</RouterLink>
+      </template>
+    </SubscriptionCatalog>
+    <div v-else-if="!ready && !loadFailed" class="flex justify-center py-12" role="status">
       <span class="text-gray-500 dark:text-dark-400">{{ t('common.loading') }}</span>
     </div>
     <div v-else class="card p-8">
@@ -25,6 +30,7 @@ import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import SubscriptionCatalog from '@/components/payment/SubscriptionCatalog.vue'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
@@ -48,6 +54,13 @@ const serviceViews = {
   redeem: defineAsyncComponent(() => import('./RedeemView.vue').then(module => module.default)),
 }
 const serviceView = computed(() => serviceViews[props.feature])
+const showSubscriptionCatalog = computed(() =>
+  props.feature === 'payment'
+  && ready.value
+  && !loadFailed.value
+  && appStore.cachedPublicSettings?.payment_enabled === false
+)
+
 
 async function loadSettings() {
   loadFailed.value = false

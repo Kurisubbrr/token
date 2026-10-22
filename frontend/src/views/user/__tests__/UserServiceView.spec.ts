@@ -27,6 +27,7 @@ function mountService(feature: 'payment' | 'subscription' | 'affiliate' | 'redee
     global: {
       stubs: {
         AppLayout: { template: '<main><slot /></main>' },
+        SubscriptionCatalog: { template: '<section data-testid="subscription-catalog"><slot name="actions" /></section>' },
         Icon: true,
         RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
       },
@@ -77,8 +78,9 @@ describe('user services with fixed navigation', () => {
       await wrapper.setProps({ feature })
       await flushPromises()
       expect(appStore.fetchPublicSettings).toHaveBeenCalledOnce()
-      expect(wrapper.text()).toContain('userService.unavailable')
-      expect(wrapper.find('[data-testid]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="' + feature + '"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="subscription-catalog"]').exists()).toBe(feature === 'payment')
+      if (feature === 'affiliate') expect(wrapper.text()).toContain('userService.unavailable')
       wrapper.unmount()
     },
   )
@@ -88,9 +90,14 @@ describe('user services with fixed navigation', () => {
       appStore.cachedPublicSettings = { [`${feature}_enabled`]: false }
       const wrapper = mountService(feature)
       await flushPromises()
-      expect(wrapper.text()).toContain('userService.unavailable')
-      expect(wrapper.text()).toContain('userService.unavailableHint')
-      expect(wrapper.find('[data-testid]').exists()).toBe(false)
+      if (feature === 'payment') {
+        expect(wrapper.find('[data-testid="subscription-catalog"]').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="payment"]').exists()).toBe(false)
+      } else {
+        expect(wrapper.text()).toContain('userService.unavailable')
+        expect(wrapper.text()).toContain('userService.unavailableHint')
+        expect(wrapper.find('[data-testid]').exists()).toBe(false)
+      }
       expect(wrapper.find('a[href="/orders"]').exists()).toBe(feature === 'payment')
       wrapper.unmount()
     },
@@ -122,7 +129,8 @@ describe('user services with fixed navigation', () => {
     expect(wrapper.find('[data-testid]').exists()).toBe(false)
     finish()
     await flushPromises()
-    expect(wrapper.text()).toContain('userService.unavailable')
+    expect(wrapper.find('[data-testid="subscription-catalog"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="payment"]').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -138,6 +146,40 @@ describe('user services with fixed navigation', () => {
     expect(wrapper.find('[data-testid]').exists()).toBe(false)
     await wrapper.get('button').trigger('click')
     await flushPromises()
+    expect(wrapper.find('[data-testid="payment"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('preserves the existing payment path when the loaded payment flag is absent', async () => {
+    appStore.cachedPublicSettings = {}
+    const wrapper = mountService('payment')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="payment"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="subscription-catalog"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('keeps a failed load retryable even when a stale payment flag is false', async () => {
+    appStore.publicSettingsLoaded = false
+    appStore.cachedPublicSettings = { payment_enabled: false }
+    appStore.fetchPublicSettings.mockRejectedValue(new Error('settings unavailable'))
+    const wrapper = mountService('payment')
+    await flushPromises()
+    expect(wrapper.text()).toContain('userService.loadFailed')
+    expect(wrapper.find('button').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="subscription-catalog"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="payment"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('returns to the real payment view if the payment flag becomes enabled', async () => {
+    appStore.cachedPublicSettings = { payment_enabled: false }
+    const wrapper = mountService('payment')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="subscription-catalog"]').exists()).toBe(true)
+    appStore.cachedPublicSettings = { payment_enabled: true }
+    await flushPromises()
+    expect(wrapper.find('[data-testid="subscription-catalog"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="payment"]').exists()).toBe(true)
     wrapper.unmount()
   })
